@@ -1,0 +1,10 @@
+# Build products and compiler caches
+build/
+
+# macOS metadata
+.DS_Store
+
+# Xcode user-specific files
+*.xcuserstate
+xcuserdata/
+

@@ -6,6 +6,8 @@
 	<string>合并 PDF</string>
 	<key>CFBundleExecutable</key>
 	<string>PDFMerge</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
 	<key>CFBundleIdentifier</key>
 	<string>local.pdfmerge.app</string>
 	<key>CFBundleName</key>

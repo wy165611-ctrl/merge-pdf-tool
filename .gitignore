@@ -1,10 +1,13 @@
 # Build products and compiler caches
 build/
 
+# Local release bundles and temporary verification output
+dist/
+tmp/
+
 # macOS metadata
 .DS_Store
 
 # Xcode user-specific files
 *.xcuserstate
 xcuserdata/
-

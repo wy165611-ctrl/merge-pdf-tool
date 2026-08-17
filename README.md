@@ -40,6 +40,12 @@
 
 后续可在 `Assets/Screenshots/` 中加入应用截图，并在此处补充展示图片。当前仓库没有虚构不存在的截图资源。
 
+## 下载与安装
+
+普通用户可以直接前往 [GitHub Releases](https://github.com/wy165611-ctrl/merge-pdf-tool/releases/latest) 下载最新的 macOS 压缩包。解压后将 `合并 PDF.app` 拖入“应用程序”文件夹即可使用；发布包与本地 `./build.sh` 生成的应用保持同一套源码和功能。
+
+首次打开时，如果 macOS 因应用未经过 Apple 公证而拦截，请在 Finder 中右键应用选择“打开”，或前往“系统设置 → 隐私与安全性”允许打开。应用不需要联网才能执行 PDF 合并、页面编辑、拆分和 OCR。
+
 ## 构建与安装
 
 需要 macOS 13 或更高版本、Swift 5+ 兼容的 `swiftc`，以及系统自带的 SwiftUI、AppKit、PDFKit、UniformTypeIdentifiers 和 Vision 框架。当前项目不依赖第三方 Swift Package，可在只有 Command Line Tools 的环境中构建：

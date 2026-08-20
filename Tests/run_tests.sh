@@ -13,6 +13,7 @@ swiftc \
   -module-cache-path "$MODULE_CACHE" \
   -framework AppKit \
   -framework PDFKit \
+  -framework UniformTypeIdentifiers \
   -framework Accelerate \
   "$PROJECT_DIR/Sources/FolderReader.swift" \
   "$PROJECT_DIR/Sources/FileOrderResolver.swift" \

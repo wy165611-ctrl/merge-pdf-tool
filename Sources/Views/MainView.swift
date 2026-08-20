@@ -39,7 +39,7 @@ struct MainView: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .center) {
                 VStack(alignment: .leading, spacing: 5) {
-                    Text("合并 PDF")
+                    Text("合并 PDF / 图片")
                         .font(.system(size: 28, weight: .bold))
                     Text("文件仅在本机处理，不会上传。拖入文件即可开始。")
                         .foregroundStyle(.secondary)
@@ -47,7 +47,7 @@ struct MainView: View {
                 Spacer()
                 HStack(spacing: 8) {
                     Button(action: store.addFilesWithPanel) {
-                        Label("添加 PDF", systemImage: "plus")
+                        Label("添加文件", systemImage: "plus")
                     }
                     .buttonStyle(.borderedProminent)
                     .disabled(store.isMerging || store.isRecognizing)
@@ -112,7 +112,7 @@ struct MainView: View {
     private var fileSidebar: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("PDF 文件")
+                Text("待合并文件")
                     .font(.headline)
                 Spacer()
                 Text("\(store.items.count)")
@@ -128,7 +128,7 @@ struct MainView: View {
                     Image(systemName: store.isDropTargeted ? "arrow.down.doc.fill" : "doc.badge.plus")
                         .font(.system(size: 34))
                         .foregroundStyle(store.isDropTargeted ? Color.accentColor : .secondary)
-                    Text("拖入 PDF")
+                    Text("拖入 PDF 或图片")
                         .font(.headline)
                     Text("或使用右上角的添加按钮")
                         .font(.caption)
@@ -144,12 +144,12 @@ struct MainView: View {
                                 .font(.caption.monospacedDigit())
                                 .foregroundStyle(.secondary)
                                 .frame(width: 22, alignment: .trailing)
-                            Image(systemName: "doc.richtext")
-                                .foregroundStyle(.red)
+                            Image(systemName: item.isImage ? "photo" : "doc.richtext")
+                                .foregroundStyle(item.isImage ? .blue : .red)
                             VStack(alignment: .leading, spacing: 3) {
                                 Text(item.fileName)
                                     .lineLimit(1)
-                                Text("\(store.pageItemsByFileID[item.id]?.count ?? item.pageCount) 页")
+                                Text("\(item.typeLabel) · \(store.pageItemsByFileID[item.id]?.count ?? item.pageCount) 页")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
@@ -227,7 +227,7 @@ struct MainView: View {
                     Image(systemName: "rectangle.stack")
                         .font(.system(size: 30))
                         .foregroundStyle(.secondary)
-                    Text(store.items.isEmpty ? "添加 PDF 后显示页面" : "当前 PDF 没有可显示的页面")
+                        Text(store.items.isEmpty ? "添加 PDF 或图片后显示页面" : "当前文件没有可显示的页面")
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                 }
@@ -326,7 +326,7 @@ struct MainView: View {
                     Text("第 \(pageNumber) / \(store.currentPages.count) 页")
                         .font(.headline)
                 } else {
-                    Text("PDF 预览")
+                        Text("页面预览")
                         .font(.headline)
                 }
                 Spacer()
@@ -406,7 +406,7 @@ struct MainView: View {
                         ProgressView()
                             .controlSize(.small)
                     }
-                    Text("合并 PDF")
+                    Text("合并为 PDF")
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(store.isMerging || store.isRecognizing || store.items.isEmpty)

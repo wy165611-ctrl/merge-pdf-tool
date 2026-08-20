@@ -1,14 +1,18 @@
 import Foundation
+import AppKit
 import PDFKit
 
 enum MergeError: LocalizedError {
     case unreadable(String)
+    case locked(String)
     case empty
 
     var errorDescription: String? {
         switch self {
         case .unreadable(let name):
             return "合并时无法读取文件：\(name)"
+        case .locked(let name):
+            return "文件已加密或需要密码：\(name)"
         case .empty:
             return "没有可合并的页面。"
         }
@@ -16,6 +20,40 @@ enum MergeError: LocalizedError {
 }
 
 enum PDFMergeService {
+    private static let supportedImageExtensions: Set<String> = [
+        "png", "jpg", "jpeg", "heic", "heif", "tif", "tiff", "gif", "bmp", "webp", "ico", "icns"
+    ]
+
+    static func supports(_ sourceURL: URL) -> Bool {
+        let extensionName = sourceURL.pathExtension.lowercased()
+        if extensionName == "pdf" {
+            return true
+        }
+        return supportedImageExtensions.contains(extensionName)
+    }
+
+    static func loadDocument(from sourceURL: URL) throws -> PDFDocument {
+        if sourceURL.pathExtension.lowercased() == "pdf" {
+            guard let document = PDFDocument(url: sourceURL) else {
+                throw MergeError.unreadable(sourceURL.lastPathComponent)
+            }
+            guard !document.isLocked else {
+                throw MergeError.locked(sourceURL.lastPathComponent)
+            }
+            return document
+        }
+
+        guard supports(sourceURL),
+              let image = NSImage(contentsOf: sourceURL),
+              let page = PDFPage(image: image) else {
+            throw MergeError.unreadable(sourceURL.lastPathComponent)
+        }
+
+        let document = PDFDocument()
+        document.insert(page, at: 0)
+        return document
+    }
+
     static func merge(
         pageItems: [PDFPageItem],
         to destinationURL: URL,
@@ -36,9 +74,7 @@ enum PDFMergeService {
             if let cached = sourceDocuments[pageItem.sourceURL] {
                 source = cached
             } else {
-                guard let loaded = PDFDocument(url: pageItem.sourceURL), !loaded.isLocked else {
-                    throw MergeError.unreadable(pageItem.sourceURL.lastPathComponent)
-                }
+                let loaded = try loadDocument(from: pageItem.sourceURL)
                 sourceDocuments[pageItem.sourceURL] = loaded
                 source = loaded
             }
@@ -68,9 +104,7 @@ enum PDFMergeService {
 
         let merged = PDFDocument()
         for sourceURL in sourceURLs {
-            guard let source = PDFDocument(url: sourceURL), !source.isLocked else {
-                throw MergeError.unreadable(sourceURL.lastPathComponent)
-            }
+            let source = try loadDocument(from: sourceURL)
 
             for index in 0..<source.pageCount {
                 guard let page = source.page(at: index) else {

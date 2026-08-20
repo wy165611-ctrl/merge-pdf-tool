@@ -146,11 +146,11 @@ final class PDFMergeStore: ObservableObject {
     func addFilesWithPanel() {
         guard !isMerging else { return }
         let panel = NSOpenPanel()
-        panel.allowedContentTypes = [.pdf]
+        panel.allowedContentTypes = [.pdf, .image]
         panel.allowsMultipleSelection = true
         panel.canChooseDirectories = false
         panel.canCreateDirectories = false
-        panel.title = "选择 PDF 文件"
+        panel.title = "选择 PDF 或图片"
         panel.prompt = "添加"
         guard panel.runModal() == .OK else { return }
         add(urls: panel.urls)
@@ -163,7 +163,7 @@ final class PDFMergeStore: ObservableObject {
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
         panel.canCreateDirectories = false
-        panel.title = "选择包含 PDF 的文件夹"
+        panel.title = "选择包含 PDF 或图片的文件夹"
         panel.prompt = "读取文件夹"
         guard panel.runModal() == .OK, let folderURL = panel.url else { return }
 
@@ -186,7 +186,7 @@ final class PDFMergeStore: ObservableObject {
         guard !isMerging, !isRecognizing else { return }
 
         guard !items.isEmpty else {
-            alert = PDFAlert(title: "请先添加 PDF", message: "添加 PDF 文件后，再选择截图识别排序。")
+            alert = PDFAlert(title: "请先添加文件", message: "添加 PDF 或图片后，再选择截图识别排序。")
             return
         }
 
@@ -330,7 +330,7 @@ final class PDFMergeStore: ObservableObject {
     func mergeWithSavePanel() {
         guard !isMerging else { return }
         guard !items.isEmpty else {
-            alert = PDFAlert(title: "无法合并", message: "请先添加至少一个 PDF 文件。")
+            alert = PDFAlert(title: "无法合并", message: "请先添加至少一个 PDF 或图片文件。")
             return
         }
 
@@ -428,24 +428,33 @@ final class PDFMergeStore: ObservableObject {
 
         for url in urls {
             let standardized = url.standardizedFileURL
-            guard standardized.pathExtension.lowercased() == "pdf" else {
-                problems.append("不是 PDF：\(url.lastPathComponent)")
+            guard PDFMergeService.supports(standardized) else {
+                problems.append("不支持的文件格式：\(url.lastPathComponent)")
                 continue
             }
             guard !seenPaths.contains(standardized.path) else { continue }
-            guard let document = PDFDocument(url: standardized) else {
-                problems.append("无法读取或文件已损坏：\(url.lastPathComponent)")
+            let document: PDFDocument
+            do {
+                document = try PDFMergeService.loadDocument(from: standardized)
+            } catch let error as MergeError {
+                switch error {
+                case .locked:
+                    problems.append("文件已加密或需要密码：\(url.lastPathComponent)")
+                default:
+                    problems.append("无法读取或文件已损坏：\(url.lastPathComponent)")
+                }
                 continue
-            }
-            if document.isLocked {
-                problems.append("文件已加密或需要密码：\(url.lastPathComponent)")
+            } catch {
+                problems.append("无法读取或文件已损坏：\(url.lastPathComponent)")
                 continue
             }
             guard document.pageCount > 0 else {
                 problems.append("文件没有页面：\(url.lastPathComponent)")
                 continue
             }
-            additions.append(PDFFileItem(url: standardized, pageCount: document.pageCount))
+            let item = PDFFileItem(url: standardized, pageCount: document.pageCount)
+            additions.append(item)
+            documentCache[item.id] = document
             seenPaths.insert(standardized.path)
         }
 

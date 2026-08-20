@@ -26,6 +26,25 @@ func makePDF(at url: URL, pageSizes: [CGSize], marker: String) throws {
     guard document.write(to: url) else { throw ValidationError.failed("无法写入 \(url.path)") }
 }
 
+func makeImage(at url: URL, size: CGSize, marker: String, format: NSBitmapImageRep.FileType) throws {
+    let image = NSImage(size: size, flipped: false) { rect in
+        NSColor.white.setFill()
+        rect.fill()
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: 22),
+            .foregroundColor: NSColor.black
+        ]
+        marker.draw(at: CGPoint(x: 24, y: size.height / 2), withAttributes: attributes)
+        return true
+    }
+    guard let tiffData = image.tiffRepresentation,
+          let bitmap = NSBitmapImageRep(data: tiffData),
+          let data = bitmap.representation(using: format, properties: [:]) else {
+        throw ValidationError.failed("无法创建测试图片")
+    }
+    try data.write(to: url)
+}
+
 @main
 struct TestRunner {
     static func main() throws {
@@ -34,11 +53,36 @@ let root = URL(fileURLWithPath: CommandLine.arguments[1], isDirectory: true)
 let inputA = root.appendingPathComponent("a-2pages.pdf")
 let inputB = root.appendingPathComponent("b-1page-landscape.pdf")
 let inputC = root.appendingPathComponent("c-3pages.pdf")
+let inputPNG = root.appendingPathComponent("d-image.png")
+let inputJPG = root.appendingPathComponent("e-image.jpg")
 let output = root.appendingPathComponent("merged.pdf")
 try? FileManager.default.removeItem(at: output)
 try makePDF(at: inputA, pageSizes: [CGSize(width: 300, height: 400), CGSize(width: 300, height: 400)], marker: "A")
 try makePDF(at: inputB, pageSizes: [CGSize(width: 600, height: 300)], marker: "B")
 try makePDF(at: inputC, pageSizes: [CGSize(width: 400, height: 500), CGSize(width: 400, height: 500), CGSize(width: 400, height: 500)], marker: "C")
+try makeImage(at: inputPNG, size: CGSize(width: 320, height: 240), marker: "PNG", format: .png)
+try makeImage(at: inputJPG, size: CGSize(width: 240, height: 320), marker: "JPG", format: .jpeg)
+
+guard PDFMergeService.supports(inputPNG), PDFMergeService.supports(inputJPG),
+      !PDFMergeService.supports(root.appendingPathComponent("note.txt")) else {
+    throw ValidationError.failed("图片格式识别不正确")
+}
+
+let imageOutput = root.appendingPathComponent("merged-images.pdf")
+try? FileManager.default.removeItem(at: imageOutput)
+try PDFMergeService.merge(
+    sourceURLs: [inputA, inputPNG, inputJPG, inputB],
+    to: imageOutput,
+    compressed: false,
+    enhanced: false,
+    clarityLevel: .standard
+)
+guard let imageMerged = PDFDocument(url: imageOutput), imageMerged.pageCount == 5,
+      imageMerged.page(at: 1)?.bounds(for: .mediaBox).width ?? 0 > 0,
+      imageMerged.page(at: 2)?.bounds(for: .mediaBox).height ?? 0 > 0 else {
+    throw ValidationError.failed("PDF、PNG 和 JPG 混合合并不正确")
+}
+print("图片合并验证通过：PDF、PNG、JPG 可混合输出为 5 页 PDF。")
 
 let merged = PDFDocument()
 for url in [inputA, inputB, inputC] {
@@ -173,6 +217,6 @@ let sortedFolderFiles = folderFiles.sorted { $0.lastPathComponent.localizedStand
 guard sortedFolderFiles.map(\.lastPathComponent) == ["01-b.pdf", "02-a.pdf", "03-note.txt"] else {
     throw ValidationError.failed("文件夹直接文件读取或排序不正确")
 }
-print("文件夹读取验证通过：直接文件和非 PDF 文件均被发现，应用会跳过非 PDF。")
+print("文件夹读取验证通过：直接文件和不支持格式均被发现，应用会跳过不支持格式。")
     }
 }
